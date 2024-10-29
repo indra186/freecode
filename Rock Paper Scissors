@@ -1,0 +1,13 @@
+import random
+
+def player(prev_play, opponent_history=[]):
+    if prev_play:
+        opponent_history.append(prev_play)
+
+    counter_moves = {"R": "P", "P": "S", "S": "R"}
+
+    if len(opponent_history) > 1:
+        last_move = opponent_history[-1]
+        return counter_moves[last_move]
+    else:
+        return random.choice(["R", "P", "S"])
