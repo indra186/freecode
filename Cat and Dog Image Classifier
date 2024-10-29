@@ -1,0 +1,114 @@
+import tensorflow as tf
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras import layers, models
+import matplotlib.pyplot as plt
+
+# Set parameters
+BATCH_SIZE = 32
+IMG_HEIGHT = 150
+IMG_WIDTH = 150
+train_dir = "cats_and_dogs/train"
+validation_dir = "cats_and_dogs/validation"
+test_dir = "cats_and_dogs/test"
+
+# Initialize generators with rescaling
+train_image_generator = ImageDataGenerator(rescale=1.0/255)
+validation_image_generator = ImageDataGenerator(rescale=1.0/255)
+test_image_generator = ImageDataGenerator(rescale=1.0/255)
+
+# Load data with flow_from_directory
+train_data_gen = train_image_generator.flow_from_directory(
+    batch_size=BATCH_SIZE,
+    directory=train_dir,
+    shuffle=True,
+    target_size=(IMG_HEIGHT, IMG_WIDTH),
+    class_mode='binary')
+
+validation_data_gen = validation_image_generator.flow_from_directory(
+    batch_size=BATCH_SIZE,
+    directory=validation_dir,
+    target_size=(IMG_HEIGHT, IMG_WIDTH),
+    class_mode='binary')
+
+test_data_gen = test_image_generator.flow_from_directory(
+    batch_size=BATCH_SIZE,
+    directory=test_dir,
+    target_size=(IMG_HEIGHT, IMG_WIDTH),
+    class_mode=None,
+    shuffle=False)
+
+train_image_generator = ImageDataGenerator(
+    rescale=1.0/255,
+    rotation_range=40,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True
+)
+train_data_gen = train_image_generator.flow_from_directory(
+    batch_size=BATCH_SIZE,
+    directory=train_dir,
+    shuffle=True,
+    target_size=(IMG_HEIGHT, IMG_WIDTH),
+    class_mode='binary')
+model = models.Sequential([
+    layers.Conv2D(32, (3, 3), activation='relu', input_shape=(IMG_HEIGHT, IMG_WIDTH, 3)),
+    layers.MaxPooling2D(2, 2),
+    layers.Conv2D(64, (3, 3), activation='relu'),
+    layers.MaxPooling2D(2, 2),
+    layers.Conv2D(128, (3, 3), activation='relu'),
+    layers.MaxPooling2D(2, 2),
+    layers.Conv2D(128, (3, 3), activation='relu'),
+    layers.MaxPooling2D(2, 2),
+    layers.Flatten(),
+    layers.Dense(512, activation='relu'),
+    layers.Dense(1, activation='sigmoid')
+])
+
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+EPOCHS = 15
+history = model.fit(
+    train_data_gen,
+    steps_per_epoch=train_data_gen.samples // BATCH_SIZE,
+    epochs=EPOCHS,
+    validation_data=validation_data_gen,
+    validation_steps=validation_data_gen.samples // BATCH_SIZE
+)
+acc = history.history['accuracy']
+val_acc = history.history['val_accuracy']
+loss = history.history['loss']
+val_loss = history.history['val_loss']
+epochs_range = range(EPOCHS)
+
+plt.figure(figsize=(12, 6))
+plt.subplot(1, 2, 1)
+plt.plot(epochs_range, acc, label='Training Accuracy')
+plt.plot(epochs_range, val_acc, label='Validation Accuracy')
+plt.legend(loc='lower right')
+plt.title('Training and Validation Accuracy')
+
+plt.subplot(1, 2, 2)
+plt.plot(epochs_range, loss, label='Training Loss')
+plt.plot(epochs_range, val_loss, label='Validation Loss')
+plt.legend(loc='upper right')
+plt.title('Training and Validation Loss')
+plt.show()
+probabilities = model.predict(test_data_gen)
+probabilities = [1 if prob > 0.5 else 0 for prob in probabilities]
+
+# Helper function to plot images with predictions
+def plotImages(images, predictions=None):
+    plt.figure(figsize=(10,10))
+    for i, img in enumerate(images):
+        plt.subplot(5,5,i+1)
+        plt.imshow(img)
+        plt.title("Dog" if predictions[i] == 1 else "Cat")
+        plt.axis('off')
+    plt.show()
+
+# Display test images with predictions
+test_images, _ = next(test_data_gen)
+plotImages(test_images[:25], probabilities[:25])
+# Run to see if the accuracy meets the challenge requirement
+# The specific command for testing may vary based on how the test is defined in your environment.
